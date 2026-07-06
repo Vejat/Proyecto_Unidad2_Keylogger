@@ -7,7 +7,9 @@
 
 ## Qué pueden pedirte en la defensa
 
-Hay tres tipos de cosas: **explicar** cómo funciona algo, **demostrar** que funciona en la VM, o **modificar** el código en vivo. Abajo tienes respuestas preparadas y cambios fáciles que podrías tener que hacer.
+Hay tres tipos de cosas: **explicar** cómo funciona algo, **demostrar** que funciona en la VM, o **modificar** el código en vivo. Abajo tienes respuestas preparadas y cambios fáciles.
+
+Para cambios **más complejos** (cola de reintentos, token en receptor, metadatos, PBKDF2, etc.) ver `preparacion_cambios_complejos.md`.
 
 ---
 
