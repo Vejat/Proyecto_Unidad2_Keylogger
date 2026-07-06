@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
-build/
+build/pyinstaller/
 dist/
 *.spec
 *.exe
