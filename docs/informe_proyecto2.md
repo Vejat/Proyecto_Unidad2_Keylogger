@@ -1,5 +1,6 @@
 # Avance del Proyecto — Unidad 2 Keylogger
 
+**Autor:** Vejat Olea 
 **Curso:** Desarrollo de Software para Seguridad  
 **Universidad:** Universidad de Talca  
 **Fecha:** Julio 2026
@@ -175,7 +176,7 @@ Al abrir el cuerpo de un paquete POST, el campo `payload` aparece como base64 il
 
 ![Payload cifrado en Wireshark](../evidencias/capturas/mensaje%20cifrado.png)
 
-También creamos el script `demo_mitm_decrypt.py` para demostrar que un payload interceptado falla al descifrar sin la clave correcta.
+También existe el script `demo_mitm_decrypt.py` para demostrar que un payload interceptado falla al descifrar sin la clave correcta.
 
 ---
 
@@ -206,5 +207,3 @@ El análisis completo está en `evidencias/virustotal/analisis.md`.
 Montamos un laboratorio con dos VMs Windows 11 donde el keylogger captura teclas, las cifra con AES-256-GCM, las envía cada 20 segundos al atacante, sobrevive reinicios mediante persistencia en el registro de Windows, y se entrega como ejecutable compilado con PyInstaller.
 
 Demostramos con Wireshark que un MITM intercepta el tráfico HTTP pero no puede leer el contenido cifrado. En VirusTotal, 19 de 69 motores detectaron el binario, confirmando que la evasión total es difícil pero la evasión parcial y el cifrado de red sí funcionan como capas de protección del atacante.
-
-El proyecto cumple los objetivos técnicos de los cuatro ejercicios en entorno controlado.

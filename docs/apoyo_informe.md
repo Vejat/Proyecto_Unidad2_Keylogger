@@ -3,7 +3,7 @@
 **Autor:** Vejat Olea  
 **Universidad:** Universidad de Talca  
 **Fecha:** Julio 2026  
-**Clasificación:** Laboratorio educativo
+
 
 ---
 
