@@ -28,6 +28,8 @@ Keylogger en Python para Windows 11 que captura teclas, las cifra con AES-256-GC
 | `docs/justificacion_cifrado.md` | Por qué AES-GCM y cómo se maneja la clave (Ejercicio 2) |
 | `docs/mitigacion.md` | Cómo detectar y mitigar la amenaza (Ejercicio 3) |
 | `docs/informe_tecnico.md` | Informe de amenaza estilo Threat Intelligence (Ejercicio 4) |
+| `docs/guion_video.md` | Guion para el video demostrativo |
+| `docs/preparacion_defensa.md` | Preguntas y cambios en vivo para la defensa |
 | `evidencias/virustotal/analisis.md` | Resultado del análisis en VirusTotal |
 
 ---

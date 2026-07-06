@@ -8,7 +8,10 @@ import sys
 
 
 def get_app_dir() -> str:
-    """Directorio donde vive keylogger.py o el .exe compilado."""
+    """
+    Directorio base del programa.
+    sys.frozen es True cuando corre como .exe de PyInstaller (no como script .py).
+    """
     if getattr(sys, "frozen", False):
         return os.path.dirname(os.path.abspath(sys.executable))
     return os.path.dirname(os.path.abspath(__file__))

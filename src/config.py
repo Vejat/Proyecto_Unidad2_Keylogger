@@ -8,8 +8,8 @@ IMPORTANTE: Nunca subas claves reales al repositorio.
 # SO objetivo: Windows 11
 TARGET_OS = "Windows 11"
 
-# Intervalo de envío en segundos (configurable y justificable)
-SEND_INTERVAL = 20          # segundos - buen balance para pruebas
+# Intervalo de envío en segundos — cambiar aquí si el profesor lo pide en vivo
+SEND_INTERVAL = 20
 
 # === Red entre VMs (VirtualBox) ===
 # Usaremos adaptador Host-Only (recomendado)

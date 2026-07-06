@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import os
 import base64
 
-KEY_SIZE = 32  # 256 bits
+KEY_SIZE = 32  # 256 bits para AES-256
 
 
 def generate_key() -> bytes:
@@ -35,23 +35,23 @@ def load_key(path: str) -> bytes:
 
 def encrypt(data: bytes, key: bytes) -> str:
     """
-    Cifra los datos usando AES-256-GCM.
-    Retorna un string base64: nonce + ciphertext + tag
+    Cifra con AES-256-GCM. Retorna base64 de: nonce (12 B) + ciphertext + tag (16 B).
+    El nonce es único por envío; reutilizarlo con la misma clave rompe GCM.
     """
     aesgcm = AESGCM(key)
-    nonce = os.urandom(12)  # GCM recomienda 12 bytes
-    ciphertext = aesgcm.encrypt(nonce, data, None)
-    # nonce + ciphertext (incluye el tag de 16 bytes al final)
+    nonce = os.urandom(12)  # recomendación NIST para GCM
+    ciphertext = aesgcm.encrypt(nonce, data, None)  # tag va al final del ciphertext
     encrypted = nonce + ciphertext
-    return base64.b64encode(encrypted).decode('utf-8')
+    return base64.b64encode(encrypted).decode("utf-8")
 
 
 def decrypt(encrypted_b64: str, key: bytes) -> bytes:
     """
-    Descifra datos en formato base64 producidos por encrypt().
+    Descifra un payload producido por encrypt().
+    Si la clave es incorrecta o el dato fue alterado, lanza InvalidTag.
     """
     aesgcm = AESGCM(key)
     data = base64.b64decode(encrypted_b64)
     nonce = data[:12]
-    ciphertext = data[12:]
+    ciphertext = data[12:]  # incluye tag de autenticación
     return aesgcm.decrypt(nonce, ciphertext, None)

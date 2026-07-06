@@ -221,13 +221,15 @@ def add_scheduled_task(launcher_path: str = None) -> bool:
 
 def install_persistence(script_path: str = None) -> bool:
     """
-    Instala todos los mecanismos de persistencia.
-    Retorna True si al menos el registro se configuró correctamente.
+    Instala persistencia en 3 capas:
+    1) Registro HKCU Run (principal)
+    2) Carpeta Startup (respaldo)
+    3) Tarea programada onlogon (opcional, puede fallar sin admin)
     """
     launcher_path = create_launcher_bat(script_path)
     registry_ok = add_to_registry(launcher_path)
     add_to_startup_folder(launcher_path)
-    add_scheduled_task(launcher_path)
+    add_scheduled_task(launcher_path)  # no crítico si da "Acceso denegado"
     return registry_ok
 
 

