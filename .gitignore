@@ -1,0 +1,35 @@
+# Archivos generados
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.spec
+*.exe
+*.log
+
+# Entorno virtual
+venv/
+env/
+.venv/
+
+# Datos sensibles y archivos generados en runtime (nunca subir)
+*.key
+config_local.py
+.env
+src/received_logs.txt
+src/run_keylogger.bat
+dist/run_keylogger.bat
+dist/secret.key
+
+# IDE y SO
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# PyInstaller
+*.manifest
+*.spec

@@ -1,0 +1,21 @@
+# Dependencias para el proyecto Keylogger Seguro
+# Instalar con: pip install -r requirements.txt
+
+# Keylogging (en Kali también instalar: sudo apt install python3-xlib)
+pynput>=1.7.6
+
+# Cifrado moderno y seguro (AES-GCM recomendado)
+cryptography>=42.0.0
+
+# Compilación a ejecutable
+pyinstaller>=6.0.0
+
+# Opcional: para mejor manejo de logs y configuración
+python-dotenv>=1.0.0
+
+# Para el receptor de datos (servidor Flask - Opción A)
+flask>=3.0.0
+requests>=2.31.0
+
+# Utilidades adicionales recomendadas
+requests>=2.31.0
