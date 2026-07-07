@@ -1,209 +1,63 @@
-# Avance del Proyecto — Unidad 2 Keylogger
+# Informe del Proyecto — Unidad 2 
 
-**Autor:** Vejat Olea 
-**Curso:** Desarrollo de Software para Seguridad  
-**Universidad:** Universidad de Talca  
+**Autor:** Vejat Olea  
+
 **Fecha:** Julio 2026
 
 ---
 
 ## Introducción
 
-Para este proyecto desarrollamos un keylogger educativo en Python dentro de un entorno de laboratorio con VirtualBox. Simulamos un escenario entre una máquina víctima y una máquina atacante, todo controlado y aislado, sin usar equipos de terceros.
+Para este proyecto desarrollamos un keylogger educativo en Python, probado únicamente en máquinas virtuales propias dentro de VirtualBox. La idea fue simular un escenario de espionaje entre una máquina víctima y una máquina atacante, siempre en un entorno controlado y sin utilizar equipos de terceros.
 
-Completamos los cuatro ejercicios del proyecto: captura de teclado con persistencia, cifrado y envío de datos, compilación a ejecutable con demostración MITM y análisis en VirusTotal, e informe técnico de amenaza. Este documento resume paso a paso lo que hicimos, los comandos que usamos y las evidencias que obtuvimos.
-
----
-
-## Paso 1 — Configurar las máquinas virtuales
-
-Lo primero fue crear dos VMs con Windows 11 en VirtualBox: una llamada **windows 11 pro** (atacante) y otra **windows 11 victima** (keylogger).
-
-En ambas configuramos un adaptador de red **Host-Only**. Las IPs que quedaron fueron:
-
-- VM Víctima: `192.168.56.107`
-- VM Atacante: `192.168.56.108`
-- Host (interfaz Ethernet): `192.168.56.1`
-
-![VMs corriendo en VirtualBox](../evidencias/capturas/mv%20windows%2011%20pro%20victima%20y%20atacante.png)
+El trabajo se organizó en cuatro ejercicios: implementar el keylogger con persistencia, cifrar y enviar los datos capturados, compilar el programa y analizar su detección, y redactar un informe técnico de amenaza. En este documento explico cómo desarrollamos cada parte, qué resultado obtuvimos y por qué consideramos que cumple con lo solicitado.
 
 ---
 
-## Paso 2 — Pasar el código a las VMs con carpeta compartida
+## Entorno de trabajo
 
-Configuramos una carpeta compartida en VirtualBox apuntando a `Proyecto_Unidad2_Keylogger`, con nombre `Proyecto`, **Automontar** y **Make Machine-permanent** activados.
-
-![Configuración de carpeta compartida](../evidencias/capturas/pasando%20el%20software%20kylogger%20a%20las%20mv.png)
-
-En cada VM montamos la unidad:
-
-```powershell
-net use Y: \\vboxsrv\Proyecto /persistent:yes
-Y:
-dir
-```
-
-El código quedó accesible en `Y:\src`.
+Montamos dos máquinas virtuales con Windows 11: una víctima (192.168.56.107) y otra atacante (192.168.56.108), conectadas mediante red Host-Only para que la comunicación quedara dentro del laboratorio. Además, compartimos el código del proyecto con una carpeta de VirtualBox disponible en ambas VMs, lo que nos permitió probar el programa en los dos lados y compartir el archivo `secret.key` entre el keylogger y el receptor sin tener que copiar archivos manualmente.
 
 ---
 
-## Paso 3 — Instalar las dependencias de Python
+## Ejercicio 1 — Keylogger y persistencia
 
-```powershell
-cd Y:\src
-pip install -r requirements.txt
-```
+En el primer ejercicio desarrollamos el núcleo del keylogger. El programa captura las teclas del usuario con `pynput`, las guarda en memoria y cada veinte segundos las envía al servidor del atacante, donde un receptor Flask las recibe y las muestra. Para verificar su funcionamiento, escribimos en el Bloc de notas y comprobamos que las teclas llegaban correctamente al otro equipo, demostrando así cómo un atacante puede espiar la escritura de un usuario sin que este lo note.
 
-Usamos `pynput` (teclado), `cryptography` (AES-GCM), `requests` (envío HTTP) y `flask` (receptor).
+A continuación implementamos persistencia, ya que un implante de este tipo debería seguir activo después de reiniciar Windows. El programa se registró en la clave Run de HKCU y dejó una copia en la carpeta de Inicio bajo el nombre `WindowsSecurityUpdateService`, simulando una actualización legítima. Tras reiniciar la VM víctima, el proceso volvió a ejecutarse solo y el receptor continuó recibiendo datos.
 
-![Montaje de Y: e instalación de dependencias](../evidencias/capturas/dependencias%20.png)
+Sin embargo, al principio la persistencia no funcionaba porque el registro apuntaba a un alias de Python de la Microsoft Store que no arranca con Windows. Finalmente lo resolvimos con un archivo `.bat` que usa la ruta real de `pythonw.exe` y espera a que la carpeta compartida esté montada. También documentamos las limitaciones del keylogger: no captura bien contraseñas en navegadores, teclas en ventanas con UAC elevado ni texto pegado con Ctrl+V, lo que nos ayudó a entender que incluso un malware de este tipo tiene restricciones en la práctica.
 
 ---
 
-## Paso 4 — Configurar la comunicación entre víctima y atacante
+## Ejercicio 2 — Cifrado y envío de datos
 
-En `config.py`:
+En el segundo ejercicio protegimos la información antes de enviarla por la red, cifrándola con AES-256-GCM. La clave se genera en la primera ejecución y se guarda en `secret.key`, mientras que el receptor descifra con ese mismo archivo. Elegimos cifrado simétrico en lugar de un hash porque necesitábamos recuperar el texto original; un algoritmo como SHA no permitiría mostrar las teclas capturadas.
 
-```python
-SERVER_URL = "http://192.168.56.108:5000/upload"
-SEND_INTERVAL = 20  # segundos
-```
-
-La primera ejecución del keylogger genera `secret.key`. Como ambas VMs comparten `Y:\`, el receptor lee la misma clave para descifrar.
+Durante las pruebas vimos que en el receptor aparecía el texto legible, pero en la red solo se observaba un campo `payload` en base64 sin palabras reconocibles. Además, si el mensaje se altera o se usa una clave incorrecta, el descifrado falla con `InvalidTag`, lo que demuestra que AES-GCM también protege la integridad del dato y no solo su confidencialidad. De esta manera el cifrado de aplicación cumple su rol aunque la comunicación viaje por HTTP sin TLS, tal como ocurre en nuestro laboratorio.
 
 ---
 
-## Paso 5 — Levantar el receptor en la VM atacante
+## Ejercicio 3 — Ejecutable, MITM y VirusTotal
 
-```powershell
-cd Y:\src
-python receiver.py
-```
+El tercer ejercicio exigía entregar un binario funcional, por lo que compilamos el keylogger como `WindowsSecurityUpdateService.exe` con PyInstaller. De esta forma simulamos la distribución de un malware disfrazado de actualización del sistema. El ejecutable pesa alrededor de 14,4 MB y su hash SHA-256 quedó registrado como indicador de compromiso: `7CEFCF86B89F2323E5279BF7D24D5BD424F4A52A6E831FE6CD6FDBF838E5F421`.
 
-El receptor escucha en el puerto 5000, descifra cada POST a `/upload` y guarda los logs en `received_logs.txt`.
+También realizamos una demostración de ataque en medio con Wireshark. Primero intentamos capturar desde el host, pero no apareció tráfico porque en VirtualBox la comunicación entre dos VMs no pasa por la tarjeta del host. Entonces capturamos directamente en la VM atacante y observamos envíos HTTP periódicos al puerto 5000. Aunque el tráfico era visible, el `payload` viajaba cifrado, de modo que un interceptador no podía leer las teclas sin `secret.key`.
 
----
-
-## Paso 6 — Ejecutar el keylogger en la VM víctima
-
-```powershell
-cd Y:\src
-python keylogger.py
-```
-
-El programa captura teclas con `pynput`, las acumula en un buffer y cada 20 segundos las cifra con AES-256-GCM y las envía al atacante.
-
-```
-[+] Datos capturados (37 eventos). Enviando cifrado...
-[+] Datos enviados exitosamente.
-```
-
-![Keylogger capturando y enviando](../evidencias/capturas/kyloger%20ejecutandose.png)
-
-![Receptor mostrando las teclas recibidas](../evidencias/capturas/receptor%20funcioanndo.png)
-
-Elegimos AES-GCM y no un hash porque necesitamos recuperar el texto original en el receptor. Un hash como SHA es unidireccional y no sirve para descifrar logs.
+Por último, analizamos el ejecutable en VirusTotal y obtuvimos 19 detecciones de 69 motores (27,5%), con la etiqueta `trojan.clyp/keylogger`. ESET y Kaspersky lo identificaron como keylogger Python, mientras que Microsoft y Avast no lo marcaron. En consecuencia, el programa logra evasión parcial, pero no total.
 
 ---
 
-## Paso 7 — Instalar la persistencia
+## Ejercicio 4 — Informe técnico de amenaza
 
-```powershell
-cd Y:\src
-python persistence.py install
-```
-
-Esto creó `run_keylogger.bat`, lo registró en `HKCU\...\Run` como `WindowsSecurityUpdateService` y lo copió a la carpeta de Inicio.
-
-```powershell
-reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v WindowsSecurityUpdateService
-type run_keylogger.bat
-```
-
-**Problema que tuvimos:** al principio la persistencia no funcionaba tras reiniciar. El registro apuntaba a un alias de Python de la Microsoft Store (archivo de 0 bytes). La solución fue registrar un `.bat` con la ruta real de `pythonw.exe` y un `timeout` de 15 segundos para que la unidad `Y:` alcance a montarse.
-
----
-
-## Paso 8 — Probar la persistencia tras reinicio
-
-Reiniciamos la VM víctima sin ejecutar nada manualmente. Después de iniciar sesión:
-
-- Apareció `pythonw.exe` en el Administrador de tareas.
-- El receptor empezó a recibir teclas automáticamente.
-
-![Proceso en Administrador de tareas](../evidencias/capturas/admin%20tareas%20python.exe.png)
-
----
-
-## Paso 9 — Compilar el keylogger a ejecutable (Ejercicio 3)
-
-El proyecto exige entregar un binario, no solo el script. Compilamos con PyInstaller:
-
-```powershell
-cd Y:\build
-.\build.ps1
-```
-
-Esto generó `dist/WindowsSecurityUpdateService.exe` (~14.4 MB). Probamos el ejecutable en la VM víctima y funcionó igual que el script: capturó teclas y las envió cifradas al receptor.
-
-![Ejecutable corriendo](../evidencias/capturas/windows%20securityupdateservice.png)
-
-El hash SHA-256 del binario es:
-
-```
-7CEFCF86B89F2323E5279BF7D24D5BD424F4A52A6E831FE6CD6FDBF838E5F421
-```
-
----
-
-## Paso 10 — Demostración MITM con Wireshark (Ejercicio 3)
-
-**Problema que tuvimos:** capturamos primero en el host (interfaz Ethernet `192.168.56.1`) y el filtro quedaba vacío aunque el keylogger enviaba datos correctamente. Esto pasa porque en VirtualBox el tráfico entre dos VMs (`.107` → `.108`) no pasa por la tarjeta del host.
-
-**Solución:** instalamos Wireshark en la **VM atacante** y capturamos ahí.
-
-Aplicamos el filtro:
-
-```
-ip.addr == 192.168.56.107 && ip.addr == 192.168.56.108 && tcp.port == 5000
-```
-
-Vimos múltiples paquetes **HTTP POST /upload** de la víctima al atacante y respuestas **200 OK**, confirmando la exfiltración periódica.
-
-![Tráfico HTTP capturado con filtro](../evidencias/capturas/filtro%20oficial.png)
-
-Al abrir el cuerpo de un paquete POST, el campo `payload` aparece como base64 ilegible. Un atacante MITM puede interceptar el tráfico, pero **no puede leer las teclas** sin `secret.key`.
-
-![Payload cifrado en Wireshark](../evidencias/capturas/mensaje%20cifrado.png)
-
-También existe el script `demo_mitm_decrypt.py` para demostrar que un payload interceptado falla al descifrar sin la clave correcta.
-
----
-
-## Paso 11 — Análisis en VirusTotal (Ejercicio 3)
-
-Subimos `WindowsSecurityUpdateService.exe` a https://www.virustotal.com
-
-**Resultado: 19 de 69 motores lo detectaron (27,5%).**
-
-Etiqueta de amenaza: `trojan.clyp/keylogger`
-
-Los que lo detectan lo clasifican principalmente como keylogger Python empaquetado con PyInstaller:
-- ESET: `Python/Spy.KeyLogger.MT`
-- Kaspersky: `HEUR:Trojan-Spy.Python.Keylogger.ae`
-- Yandex: `Riskware.PyInstaller`
-- Varios más con heurística `Gen:Heur.Clyp.13`
-
-Los que **no** lo detectan incluyen **Microsoft, Avast, AVG, Symantec, Sophos y Malwarebytes**. Esto demuestra evasión parcial: no todos los antivirus lo marcan.
-
-![Resultado general VirusTotal](../evidencias/virustotal/nota%20general%20.png)
-
-El análisis completo está en `evidencias/virustotal/analisis.md`.
+En el cuarto ejercicio redactamos un informe de amenaza con formato Threat Intelligence, describiendo nuestra herramienta como un implante real. Incluimos la descripción del malware, el vector de infección, las TTPs según MITRE ATT&CK, los indicadores de compromiso, el impacto, las medidas de mitigación y las conclusiones. También registramos datos concretos como nombres de archivos, rutas de registro, direcciones de red y hashes del ejecutable, porque un informe de este tipo debe servir para que un equipo de seguridad pueda buscar la infección en sus sistemas. En definitiva, este ejercicio nos obligó a analizar el proyecto desde la perspectiva defensiva y no solo desde la del atacante. El informe completo está en `docs/informe_tecnico.md`.
 
 ---
 
 ## Conclusión
 
-Montamos un laboratorio con dos VMs Windows 11 donde el keylogger captura teclas, las cifra con AES-256-GCM, las envía cada 20 segundos al atacante, sobrevive reinicios mediante persistencia en el registro de Windows, y se entrega como ejecutable compilado con PyInstaller.
+En conjunto, construimos un keylogger que captura teclas, persiste tras reinicio, cifra su comunicación con AES-256-GCM y exfiltra datos cada veinte segundos hacia un servidor del atacante. Lo probamos en laboratorio con dos VMs, lo compilamos como ejecutable y medimos su detección en VirusTotal.
 
-Demostramos con Wireshark que un MITM intercepta el tráfico HTTP pero no puede leer el contenido cifrado. En VirusTotal, 19 de 69 motores detectaron el binario, confirmando que la evasión total es difícil pero la evasión parcial y el cifrado de red sí funcionan como capas de protección del atacante.
+Lo más relevante que aprendimos es que un atacante puede combinar persistencia, sigilo, empaquetado y cifrado para dificultar la detección, pero ninguna capa es perfecta. El tráfico sigue siendo visible en la red, algunos antivirus detectan el binario y el keylogger no captura todo lo que hace el usuario. Por eso la defensa también debe ser en capas: revisar inicios automáticos, usar EDR, analizar patrones de red y promover buenas prácticas entre los usuarios.
+
+Todo el desarrollo y las pruebas se realizaron exclusivamente en máquinas virtuales propias, con fines educativos.
